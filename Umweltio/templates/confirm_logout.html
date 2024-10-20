@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% extends  "index.html" %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Подтверждение</title>
+</head>
+<body>
+    {% block content %}
+    <form method="POST">
+    <h2>Вы уверенны что хотите выйти?</h2>
+    <button type="submit" class="button">Да, выйти</button>
+    <p></p>
+    <a href="{{ url_for('home') }}">Отмена</a>
+    </form>
+    {% endblock %}
+</body>
+</html>

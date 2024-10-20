@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% extends "index.html" %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Изменение почты</title>
+</head>
+<body>
+    {% block content %}
+    <h1>Изменение почты</h1>
+    <form method="POST" action="{{ url_for('change_username') }}">
+        
+        <label for="current_email">Старая почта:</label>
+        <input type="email" id="current_email" name="current_email" required>
+      <p></p>
+        <label for="new_email">Новая почта:</label>
+        <input type="email" id="new_email" name="new_email" required>
+      <p></p>
+        <button type="submit" class="button">Изменить почту</button>
+    </form>
+    
+    {% if message %}
+    <p class="error">{{ message }}</p>
+    {% endif %}
+<p></p>
+    <a href="{{ url_for('profile') }}">Вернуться обратно</a>
+    {% endblock %}
+</body>
+</html>

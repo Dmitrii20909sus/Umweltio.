@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Мировой топ</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #d4e6a7;
+            margin: 0;
+            padding: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #000000;
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #13610c;
+            color: white;
+        }
+        img {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+        }
+        .medal {
+            width: 30px; 
+            height: 30px; 
+        }
+    </style>
+</head>
+<body>
+    {% extends "index.html" %}
+
+    {% block content %}
+    <h1>Мировой топ</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>Место в рейтинге</th>
+                <th>Профиль</th>
+                <th>Аватар</th>
+                <th>Количество очков</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+                <tr>
+                    <td>
+                        {% if loop.index == 1 %}
+                            <img class="medal" src="{{ url_for('static', filename='img/gold.png') }}" alt="Золотая медаль"> 
+                            
+                        {% elif loop.index == 2 %}
+                            <img class="medal" src="{{ url_for('static', filename='img/silver.png') }}" alt="Серебряная медаль">
+                             
+                        {% elif loop.index == 3 %}
+                            <img class="medal" src="{{ url_for('static', filename='img/bronze.png') }}" alt="Бронзовая медаль">  
+                           
+                        {% else %}
+                               {{ loop.index }}  
+                        {% endif %}
+                    </td>
+                    <td>{{ user.username }}</td>
+                    <td>
+                        <img src="{{ url_for('static', filename=user.profile_picture) }}" alt="Аватар">
+                    </td>
+                    <td>{{ user.points }}</td> 
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    {% if user_rank %}
+        <p>Ваше место в рейтинге: {{ user_rank }}</p>
+    {% else %}
+        <p>Вы не находитесь в списке лучших 500 пользователей.</p>
+    {% endif %}
+    {% endblock %}
+</body>
+</html>

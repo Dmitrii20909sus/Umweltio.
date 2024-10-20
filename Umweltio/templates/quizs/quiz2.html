@@ -1,0 +1,29 @@
+{% extends "index.html" %}
+
+{% block content %}
+<h2>{{ text }}</h2>
+
+{% if already_completed %}
+    <p style="color: red;">Вы уже прошли этот тест. Очки за этот тест не будут добавлены снова.</p>
+    <img src="{{ url_for('static', filename='quiz_pics/quiz2.jpeg') }}" alt="Quiz_picture" style="width: 400px; max-height: 400px; object-fit: cover;">
+    <form method="POST">
+        <p>{{ quiz.question }}</p>
+        <input type="radio" name="answer" value="A"> {{ quiz.options.A }}<br>
+        <input type="radio" name="answer" value="B"> {{ quiz.options.B }}<br>
+        <input type="radio" name="answer" value="C"> {{ quiz.options.C }}<br>
+        <input type="radio" name="answer" value="D"> {{ quiz.options.D }}<br>
+        <input type="submit" class="button" value="Ответить">
+    </form>
+{% else %}
+<img src="{{ url_for('static', filename='quiz_pics/quiz2.jpeg') }}" alt="Quiz_picture" style="width: 400px; max-height: 400px; object-fit: cover;">
+<form method="POST">
+        <p>{{ quiz.question }}</p>
+        <input type="radio" name="answer" value="A"> {{ quiz.options.A }}<br>
+        <input type="radio" name="answer" value="B"> {{ quiz.options.B }}<br>
+        <input type="radio" name="answer" value="C"> {{ quiz.options.C }}<br>
+        <input type="radio" name="answer" value="D"> {{ quiz.options.D }}<br>
+        <input type="submit" class="button" value="Ответить">
+    </form>
+{% endif %}
+
+{% endblock %}

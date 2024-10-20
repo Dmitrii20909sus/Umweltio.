@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% extends "index.html" %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Изменение имени</title>
+</head>
+<body>
+    {% block content %}
+    <form method="POST" action="{{ url_for('change_username') }}">
+        <p></p>
+        <label for="current_username">Старое имя:</label>
+        <input type="text" id="current_username" name="current_username" required>
+        <p></p>
+        <label for="new_username">Новое имя:</label>
+        <input type="text" id="new_username" name="new_username" required>
+        <p></p>
+        <button type="submit" class="button">Изменить имя</button>
+    </form>
+    {% if message %}
+    <p class="error">{{ message }}</p>
+    {% endif %}
+    <p></p>
+    <a href="{{ url_for('profile') }}">Вернуться обратно</a>
+    {% endblock %}
+</body>
+</html>

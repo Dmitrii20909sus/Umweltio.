@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% extends "index.html" %} 
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Регистрация</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    {% block content %} 
+    <h1>Регистрация</h1>
+    <form method="post">
+        <input type="text" name="username" class="input" placeholder="Ваше имя" required>
+        <input type="password" name="password" class="input" placeholder="Ваш пароль" required>
+        <input type="email" name="email" class="input" placeholder="Ваша почта" required>
+        <input type="submit" class="button" value="Зарегистрироваться">
+    </form>
+    
+    {% if message %}
+    <p class="error">{{ message }}</p>
+    {% endif %}
+    
+    <a href="{{ url_for('login') }}">Уже зарегистрированы?</a>
+    {% endblock %}
+</body>
+</html>

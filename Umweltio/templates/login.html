@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% extends "index.html" %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход</title>
+</head>
+<body>
+    {% block content %} 
+    <h1>Вход</h1>
+    <form method="post">
+        <input type="text" name="username" class="input" placeholder="Ваше имя" required>
+        <input type="password" name="password" class="input" placeholder="Ваш пароль" required>
+        <input type="submit" class="button" value="Войти">
+    </form>
+    
+    {% if message %}
+    <p class="error">{{ message }}</p>
+    {% endif %}
+
+    <a href="{{ url_for('register') }}">Ещё не зарегистрированы?</a>
+    {% endblock %}
+</body>
+</html>

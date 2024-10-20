@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% extends "index.html" %}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ваш профиль</title>
+    <style>
+        .profile-picture {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%; 
+            object-fit: cover;  
+        }
+    </style>
+</head>
+<body>
+    {% block content %}
+    <h1>Ваш профиль</h1>
+    <img src="{{ url_for('static', filename=user.profile_picture or 'profile_pics/default_profile.png') }}" 
+     alt="profile_picture" 
+     style="width:150px; height:150px; border-radius: 50%; border: 4px solid #4CAF50; ">
+    <p>Ваше имя: {{session['username'] }}</p>
+    <p>Ваша почта: {{ session['email'] }}</p>
+    
+    {% if message %}
+    <p class="error">{{ message }}</p>
+    {% endif %}
+
+    <form method="POST" enctype="multipart/form-data">
+        <label for="file" class="text">Выбрать фото:</label>
+        <input type="file" name="file" id="file" accept="image/*" required>
+        <button type="submit"class="button">Изменить фото профиля</button>
+    </form>
+
+    <form action="{{url_for('change_username')}}" method="POST">
+        <button type="submit" class="button">Изменить имя</button>
+    </form>
+    <p></p>
+    <form action="{{url_for('change_password')}}" method="POST">
+        <button type="submit" class="button">Изменить пароль</button>
+    </form>
+    <p></p>
+    <form action="{{url_for('change_email')}}" method="POST">
+        <button type="submit" class="button">Изменить почту</button>
+    </form>
+    
+    {% endblock %}
+</body>
+</html>
