@@ -54,13 +54,13 @@
                 <tr>
                     <td>
                         {% if loop.index == 1 %}
-                            <img class="medal" src="{{ url_for('static', filename='img/gold.png') }}" alt="Золотая медаль"> 
+                            <img class="medal" src="{{ url_for('static', filename='img/gold.png') }}" alt="1"> 
                             
                         {% elif loop.index == 2 %}
-                            <img class="medal" src="{{ url_for('static', filename='img/silver.png') }}" alt="Серебряная медаль">
+                            <img class="medal" src="{{ url_for('static', filename='img/silver.png') }}" alt="2">
                              
                         {% elif loop.index == 3 %}
-                            <img class="medal" src="{{ url_for('static', filename='img/bronze.png') }}" alt="Бронзовая медаль">  
+                            <img class="medal" src="{{ url_for('static', filename='img/bronze.png') }}" alt="3">  
                            
                         {% else %}
                                {{ loop.index }}  

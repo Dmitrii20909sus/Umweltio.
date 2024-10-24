@@ -18,14 +18,14 @@
 
 
 
-/* Основные стили */
+
 body {
     background-color: #d4e6a7;
     color: #333;
     font-family: 'Segoe UI', sans-serif;
 }
 
-/* Навигация */
+
 nav {
     background-color: #13610c;
     padding: 8px 12px;
@@ -69,7 +69,7 @@ nav img {
     margin-right: 5px;
 }
 
-/* Кнопки */
+
 .button {
     background-color: #13610c;
     color: rgb(43, 255, 0);
@@ -89,7 +89,7 @@ nav img {
     transform: translateY(-1px);
 }
 
-/* Инпуты */
+
 .input {
     padding: 10px;
     border: 2px solid #13610c;

@@ -50,11 +50,17 @@
             </ul>
         </div>
     </nav>
-    
+    {% if user and user.is_confirmed == False %}
+    <div style="background-color: red; color: white; padding: 10px; text-align: center;">
+        <p>Ваш адрес электронной почты не подтвержден. Пожалуйста, подтвердите его, чтобы пользоваться всеми функциями сайта.</p>
+    </div>
+    {% endif %}
+   
     {% block content %}
     <p>Добро пожаловать на наш сайт!</p>
     {% if session['username'] %}
     <p>Вы вошли как: {{ session['username'] }}.</p>
+
 <div class="card-container">
     <div class="info">
         <div class="info-title"> Изменение климата</div>

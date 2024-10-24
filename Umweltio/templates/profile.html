@@ -11,6 +11,9 @@
             height: 150px;
             border-radius: 50%; 
             object-fit: cover;  
+            .space {
+            margin: 40px 0; 
+        }
         }
     </style>
 </head>
@@ -24,8 +27,12 @@
     <p>Ваша почта: {{ session['email'] }}</p>
     
     {% if message %}
-    <p class="error">{{ message }}</p>
+    {% if message == "Фото профиля было изменёно" %}
+        <p class="success">{{ message }}</p>
+    {% else %}
+        <p class="error">{{ message }}</p>
     {% endif %}
+{% endif %}
 
     <form method="POST" enctype="multipart/form-data">
         <label for="file" class="text">Выбрать фото:</label>
@@ -44,7 +51,12 @@
     <form action="{{url_for('change_email')}}" method="POST">
         <button type="submit" class="button">Изменить почту</button>
     </form>
-    
+    <div style="margin-top: 320px;">
+        <form action="{{ url_for('delete_account') }}" method="GET">
+            <button type="submit" class="button" style="background-color: red; border-color: black; color: white;">Удалить аккаунт</button>
+        </form>
+    </div>
+   
     {% endblock %}
 </body>
 </html>

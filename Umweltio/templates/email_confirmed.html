@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Подтверждение почты</title>
+    {% extends "index.html" %}
+</head>
+<body>
+    {% block content %}
+    <h1>Подтверждение электронной почты</h1>
+    {% if not user.is_confirmed %}
+    <p>Ваш адрес электронной почты не подтвержден. Пожалуйста, подтвердите его, чтобы пользоваться всеми функциями сайта.</p>
+{% else %}
+    <p>Ваш адрес электронной почты был успешно подтвержден!</p>
+{% endif %}
+    
+    <form method="POST" action="{{ url_for('home') }}">
+        <button type="submit" class="button">Вернуться на главную страницу</button>
+    </form>
+    {% endblock %}
+</body>
+</html>

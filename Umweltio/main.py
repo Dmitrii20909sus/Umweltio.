@@ -1,15 +1,22 @@
-from flask import Flask, render_template, redirect, request, url_for, session, flash
+from flask import Flask, render_template, redirect, request, url_for, session, flash, g
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import Column, Boolean, DateTime
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from datetime import timedelta
 import os
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from datetime import datetime, timedelta
+import jwt
 
 app = Flask(__name__)
 app.secret_key = "DIMONTURURURU"
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///diary.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
 
 UPLOAD_FOLDER = 'static/profile_pics'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -21,6 +28,8 @@ class User(db.Model):
     username = db.Column(db.String(40), unique=True, nullable=False)
     password = db.Column(db.String(200), nullable=False)
     email = db.Column(db.String(100), nullable=False)
+    is_confirmed = db.Column(db.Boolean, default=False)
+    registration_date = db.Column(db.DateTime, default=datetime.utcnow) 
     profile_picture = db.Column(db.String(200), default='profile_pics/default_profile.png', nullable=True)
     points = db.Column(db.Integer, default=0)
     correct_answers = db.Column(db.Integer, default=0)
@@ -35,8 +44,54 @@ class Quiz(db.Model):
     option_c = db.Column(db.String(255), nullable=False)
     option_d = db.Column(db.String(255), nullable=False)
 
-with app.app_context():
+@app.before_request
+def create_tables():
     db.create_all()
+
+def generate_confirmation_token(user_id):
+    exp = datetime.utcnow() + timedelta(days=7)
+    token = jwt.encode({'user_id': user_id, 'exp': exp}, 'DIMONTURURURU', algorithm='HS256')
+    return token
+
+
+def generate_confirmation_link(user_id):
+    token = generate_confirmation_token(user_id) 
+    confirmation_link = url_for('confirm_email', token=token, _external=True)
+    return confirmation_link
+
+def send_confirmation_email(email, confirmation_link):
+    sender_email = "umweltio2009@gmail.com"
+    sender_password = "xxvl vxus ycqw sqbp"
+
+    
+    msg = MIMEMultipart()
+    msg['From'] = sender_email
+    msg['To'] = email
+    msg['Subject'] = "Подтверждение регистрации "
+
+    body = f"Спасибо за регистрацию! Пожалуйста, подтвердите ваш адрес электронной почты, перейдя по следующей ссылке: {confirmation_link}"
+    msg.attach(MIMEText(body, 'plain'))
+
+    try:
+        with smtplib.SMTP('smtp.gmail.com', 587) as server:
+            server.starttls()
+            server.login(sender_email, sender_password)
+            server.send_message(msg)
+            print("Письмо отправлено!")
+    except Exception as e:
+        print(f"Ошибка при отправке письма: {e}")
+
+    return redirect(url_for('home'))
+
+def delete_unconfirmed_users():
+    seven_days_ago = datetime.utcnow() - timedelta(days=7)
+    unconfirmed_users = User.query.filter(User.is_confirmed == False, User.registration_date < seven_days_ago).all()
+    
+    for user in unconfirmed_users:
+        db.session.delete(user)
+    
+    db.session.commit()
+    print(f"Удалено {len(unconfirmed_users)} неподтвержденных пользователей.")
 
 def get_current_user():
     if 'user_id' in session:
@@ -46,33 +101,46 @@ def get_current_user():
 @app.before_request
 def make_session_permanent():
     session.permanent = True
-    app.permanent_session_lifetime = timedelta(days=7) 
+    app.permanent_session_lifetime = timedelta(days=7)
 
-@app.route('/')
+@app.before_request
+def load_user():
+    g.user = get_current_user()  
+
+@app.before_request
+def check_unconfirmed_users():
+    delete_unconfirmed_users()
+
+
+@app.route('/', methods=['GET', 'POST'])
 def home():
-    user = get_current_user()
-    brightness_value = request.args.get('brightness', default=100, type=int)
-    return render_template('index.html', user=user)
+    if request.method == 'POST':
+      
+        flash('Ваши данные были отправлены успешно!')
+        return redirect(url_for('home')) 
+
+    return render_template('index.html', user=g.user)
 
 @app.route('/profile', methods=['GET', 'POST'])
 def profile():
-    if 'username' not in session:
+    if g.user is None:
         flash('Пожалуйста, войдите в систему, чтобы получить доступ к этой странице.', 'warning')
         return redirect(url_for('login'))
 
-    user = get_current_user()
+    user = g.user
+    print(f"Статус is_confirmed в профиле: {user.is_confirmed}")
     
     if request.method == 'POST':
         if 'file' not in request.files or request.files['file'].filename == '':
             return render_template('profile.html', user=user, message='Файл не выбран')
 
         file = request.files['file']
-        filename = secure_filename(file.filename)  
+        filename = secure_filename(file.filename)
         file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
 
-        user.profile_picture = f'profile_pics/{filename}'  
+        user.profile_picture = f'profile_pics/{filename}'
         db.session.commit()
-        return render_template('profile.html', user=user, message='Фото профиля было изменёно')
+        return render_template('profile.html', user=user,message='Фото профиля было изменёно')
     
     return render_template('profile.html', user=user)
 
@@ -81,18 +149,60 @@ def register():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        email = request.form['email']  
+        email = request.form['email']
 
         if User.query.filter_by(username=username).first():
             return render_template('register.html', message='Такой пользователь уже существует!')
+        if User.query.filter_by(email=email).first():
+            return render_template('register.html', message='Эта почта уже используется!')
 
-        new_user = User(username=username, 
-                        password=generate_password_hash(password, method='pbkdf2:sha256'), 
+        new_user = User(username=username,
+                        password=generate_password_hash(password, method='pbkdf2:sha256'),
                         email=email)  
         db.session.add(new_user)
         db.session.commit()
-        return redirect(url_for('login')) 
+
+       
+        token = generate_confirmation_token(new_user.id) 
+        confirmation_link = url_for('confirm_email_token', token=token, _external=True)
+        
+      
+        send_confirmation_email(email, confirmation_link)
+
+        flash('Пожалуйста, проверьте вашу почту для подтверждения аккаунта.')
+        return redirect(url_for('login'))
+
     return render_template('register.html')
+
+
+@app.route('/confirm_email/<token>', methods=['GET'])
+def confirm_email(token):
+
+    try:
+        data = jwt.decode(token, 'DIMONTURURURU', algorithms=['HS256'])
+        user_id = data.get('user_id')
+
+        user = User.query.get(user_id)
+        if user:
+            if not user.is_confirmed:
+                user.is_confirmed = True
+                db.session.commit()
+                flash('Ваш адрес электронной почты был подтвержден!')
+            else:
+                flash('Ваш адрес электронной почты уже подтвержден!')
+
+            return redirect(url_for('home', user_id=user.id))
+        else:
+            flash('Пользователь не найден.')
+            return redirect(url_for('home'))
+
+    except jwt.ExpiredSignatureError:
+        flash('Срок действия ссылки истек.')
+        return redirect(url_for('home'))
+    except jwt.InvalidTokenError:
+        flash('Неверная ссылка.')
+        return redirect(url_for('home'))
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -107,9 +217,9 @@ def login():
             session['user_id'] = user.id 
             return redirect(url_for('home'))  
         else:
-            return render_template('login.html', message='Неправильное имя или пароль')
-    
-    return render_template('login.html')
+            return render_template('login.html', user=g.user, message='Неправильное имя или пароль')
+
+    return render_template('login.html', user=g.user)
 
 @app.route('/logout', methods=['GET', 'POST'])
 def logout():
@@ -118,13 +228,12 @@ def logout():
         session.pop('user_id', None) 
         flash('Вы вышли из аккаунта ', 'info')  
         return redirect(url_for('home'))
-    
-    user = get_current_user()
-    return render_template('confirm_logout.html', user=user)  
+
+    return render_template('confirm_logout.html', user=g.user)  
 
 @app.route('/change_password', methods=['GET', 'POST'])
 def change_password():
-    user = get_current_user() 
+    user = g.user 
     if request.method == 'POST':  
         current_password = request.form.get('current_password')
         new_password = request.form.get('new_password')
@@ -147,31 +256,42 @@ def change_password():
 
     return render_template('change_password.html', user=user)  
 
-  
 @app.route('/change_email', methods=['GET', 'POST'])
 def change_email():
+    message = None 
     if request.method == 'POST':
         current_email = request.form.get('current_email')
         new_email = request.form.get('new_email')
 
-        
         if current_email and new_email:
             user = User.query.filter_by(email=current_email).first()
 
             if user:
+                existing_user = User.query.filter_by(email=new_email).first()
+                if existing_user:
+                    message = 'Эта почта уже используется другим пользователем.'
+                    return render_template('change_email.html', user=user, message=message)
+
                 user.email = new_email
+                user.is_confirmed = False 
                 db.session.commit()
-                flash('Почта была изменена')
-                session['email'] = new_email  
-                return redirect(url_for('profile'))
-            else :
-                return render_template('change_email.html', user=user, message='Почта не найдена.')
-    user = get_current_user()   
-    return render_template('change_email.html', user=user)
+
+                confirmation_link = generate_confirmation_link(user.id)
+                send_confirmation_email(new_email, confirmation_link)
+
+                flash('Почта была изменена. Пожалуйста, подтвердите новый адрес электронной почты.')
+                return redirect(url_for('profile')) 
+            else:
+                message = 'Почта не найдена.'  
+                return render_template('change_email.html', user=user, message=message)
+
+    return render_template('change_email.html', user=g.user, message=message)
+
+
 
 @app.route('/change_username', methods=['GET', 'POST'])
 def change_username():
-    user = get_current_user() 
+    user = g.user 
     if request.method == 'POST':
         current_username = request.form.get('current_username')  
         new_username = request.form.get('new_username')         
@@ -195,10 +315,33 @@ def change_username():
             return render_template('change_username.html', user=user, message='Имя не найденно.')  
             
     return render_template('change_username.html', user=user)  
+
+@app.route('/delete_account', methods=['GET', 'POST'])
+def delete_account():
+    user = g.user  
+
+  
+    if user is None:
+        flash('Вы не вошли в систему.', 'warning')
+        return redirect(url_for('login'))
+
+    if request.method == 'POST':
+        password = request.form['password']
+        
     
+        if check_password_hash(user.password, password):
+            db.session.delete(user)  
+            db.session.commit()  
+            session.clear()  
+            flash('Ваш аккаунт был успешно удалён.', 'success')
+            return redirect(url_for('login'))  
+        else:
+            return render_template('delete_account.html', user=user, message='Неверный пароль.')
+
+    return render_template('delete_account.html', user=user)
+
 @app.route('/about_us')
 def us():
-    user = get_current_user()
     brightness = request.args.get('brightness', default=100, type=int) 
     make_pink = request.args.get('make_pink', default='false')  
 
@@ -207,7 +350,7 @@ def us():
     else:
         filter_style = f"brightness({brightness}%)"
 
-    return render_template('about_us.html', user=user, filter_style=filter_style, brightness=brightness)
+    return render_template('about_us.html', user=g.user, filter_style=filter_style, brightness=brightness)
 
 @app.route('/quiz1', methods=['GET', 'POST'])
 def quiz1():
@@ -227,11 +370,11 @@ def quiz4():
 
 @app.route('/quiz5', methods=['GET', 'POST'])
 def quiz5():
-    return quiz_logic(5)
+    return quiz_logic(5)  
 
 @app.route('/quiz6', methods=['GET', 'POST'])
 def quiz6():
-    return quiz_logic(6)
+    return quiz_logic(6)  
 
 @app.route('/quiz7', methods=['GET', 'POST'])
 def quiz7():
@@ -239,20 +382,21 @@ def quiz7():
 
 @app.route('/quiz8', methods=['GET', 'POST'])
 def quiz8():
-    return quiz_logic(8)
+    return quiz_logic(8)  
 
 @app.route('/quiz9', methods=['GET', 'POST'])
 def quiz9():
-    return quiz_logic(9) 
+    return quiz_logic(9)  
 
 @app.route('/quiz10', methods=['GET', 'POST'])
 def quiz10():
     return quiz_logic(10)
 
 def quiz_logic(quiz_number):
+    user = g.user
     questions = {
     1: {  
-        "text": "Изменение климата — это долгосрочные изменения температур и погодных условий на Земле. Это явление, которое наблюдается на протяжении веков, но в последнее время оно усилилось из-за человеческой деятельности. Увеличение концентрации парниковых газов в атмосфере приводит к глобальному потеплению, которое оказывает серьезное влияние на климат.",
+        "text": "Изменение климата",
         "questions": [
             {
                 "question": "Что является основным причиной изменения климата?",
@@ -287,7 +431,7 @@ def quiz_logic(quiz_number):
         ]
     },
     2: {  
-        "text": "Загрязнение воздуха — это серьезная проблема, которая затрагивает здоровье человека и окружающую среду. Основные источники загрязнения воздуха включают автомобильный транспорт, промышленность и сжигание ископаемых видов топлива. Загрязненный воздух может вызывать множество заболеваний, включая астму и сердечно-сосудистые заболевания.",
+        "text": "Загрязнение воздуха",
         "questions": [
             {
                 "question": "Какой из следующих веществ считается загрязнителем воздуха?",
@@ -322,7 +466,7 @@ def quiz_logic(quiz_number):
         ]
     },
     3: {  
-        "text": "Устойчивое развитие — это концепция, которая предполагает удовлетворение потребностей настоящего без ущерба для будущих поколений. Она требует изменения нашего отношения к ресурсам и среды обитания. Устойчивое развитие охватывает такие аспекты, как экономическая, социальная и экологическая устойчивость.",
+        "text": "Устойчивое развитие",
         "questions": [
             {
                 "question": "Что такое устойчивое развитие?",

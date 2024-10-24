@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head> 
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Удаление аккаунта</title>
+    <style>
+        .buttonio {
+            background-color: red; 
+            color: white; 
+            border: none; 
+            padding: 10px 20px; 
+            text-align: center; 
+            text-decoration: none; 
+            display: inline-block; 
+            font-size: 16px; 
+            cursor: pointer; 
+            border: 2px solid rgb(0, 0, 0);
+            border-radius: 10px;
+        }
+
+        .buttonio:hover {
+            background-color:green; 
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            transform: translateY(-1px);
+
+        }
+    </style>
+</head>
+<body>
+    {% extends "index.html" %}
+    {% block content %}
+    <h1>Удаление аккаунта</h1>
+    {% if user %}
+    <form method="post">
+        <input type="password" name="password" class="input" placeholder="Ваш пароль" required>
+        <p></p>
+        <input type="submit" class="button" value="Удалить аккаунт">
+    </form>
+    {% else %}
+    <p>Вы не вошли в систему.</p>
+    {% endif %}
+    {% if message %}
+    <p class="error">{{ message }}</p>
+    {% endif %}
+    
+    <p></p>
+    <a class="buttonio" href="{{ url_for('profile') }}">ОТМЕНИТЬ!!!!!!!</a>
+    
+    {% endblock %}
+</body>
+</html>
