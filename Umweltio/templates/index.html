@@ -26,6 +26,14 @@
                     <img src="{{ url_for('static', filename='img/pokal.png') }}" alt="icon">Мировой топ
                 </a>
                 </li>
+                <li>
+                    {% if session['username'] %}
+                    <a href="{{ url_for('forum') }}">
+                        <img src="{{ url_for('static', filename='img/forum_icon.png') }}" alt="icon"> Форум
+                    </a>
+                </li>
+                {% else %}
+                {% endif %}
             </ul>
         </div>
         <div class="right">
@@ -43,6 +51,7 @@
                         <img src="{{ url_for('static', filename='img/R.png') }}" alt="icon"> Выйти
                     </a>
                 </li>
+                
                 {% else %}
                 <li><a href="{{ url_for('register') }}">Зарегистрироваться</a></li>
                 <li><a href="{{ url_for('login') }}">Войти</a></li>

@@ -29,20 +29,23 @@ class User(db.Model):
     password = db.Column(db.String(200), nullable=False)
     email = db.Column(db.String(100), nullable=False)
     is_confirmed = db.Column(db.Boolean, default=False)
+    content = db.Column(db.String(500), nullable=True)  
+    status = db.Column(db.String(20), default="Участник")
     registration_date = db.Column(db.DateTime, default=datetime.utcnow) 
     profile_picture = db.Column(db.String(200), default='profile_pics/default_profile.png', nullable=True)
     points = db.Column(db.Integer, default=0)
     correct_answers = db.Column(db.Integer, default=0)
     quizzes_completed = db.Column(db.Integer, default=0)
 
-class Quiz(db.Model):
+   
+
+class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    question = db.Column(db.String(255), nullable=False)
-    correct_answer = db.Column(db.String(255), nullable=False)
-    option_a = db.Column(db.String(255), nullable=False)
-    option_b = db.Column(db.String(255), nullable=False)
-    option_c = db.Column(db.String(255), nullable=False)
-    option_d = db.Column(db.String(255), nullable=False)
+    content = db.Column(db.String(500), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User', backref='messages')
 
 @app.before_request
 def create_tables():
@@ -112,20 +115,19 @@ def check_unconfirmed_users():
     delete_unconfirmed_users()
 
 
+
 @app.route('/', methods=['GET', 'POST'])
 def home():
-    if request.method == 'POST':
-      
-        flash('Ваши данные были отправлены успешно!')
-        return redirect(url_for('home')) 
+    user = get_current_user()
 
     return render_template('index.html', user=g.user)
+
 
 @app.route('/profile', methods=['GET', 'POST'])
 def profile():
     if g.user is None:
-        flash('Пожалуйста, войдите в систему, чтобы получить доступ к этой странице.', 'warning')
-        return redirect(url_for('login'))
+        print('Salamaleikum')
+        
 
     user = g.user
     print(f"Статус is_confirmed в профиле: {user.is_confirmed}")
@@ -143,7 +145,7 @@ def profile():
         return render_template('profile.html', user=user,message='Фото профиля было изменёно')
     
     return render_template('profile.html', user=user)
-
+    
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
@@ -158,13 +160,13 @@ def register():
 
         new_user = User(username=username,
                         password=generate_password_hash(password, method='pbkdf2:sha256'),
-                        email=email)  
+                        email=email, content='', status='Участник')  
         db.session.add(new_user)
         db.session.commit()
 
        
         token = generate_confirmation_token(new_user.id) 
-        confirmation_link = url_for('confirm_email_token', token=token, _external=True)
+        confirmation_link = url_for('confirm_email', token=token, _external=True)
         
       
         send_confirmation_email(email, confirmation_link)
@@ -177,7 +179,6 @@ def register():
 
 @app.route('/confirm_email/<token>', methods=['GET'])
 def confirm_email(token):
-
     try:
         data = jwt.decode(token, 'DIMONTURURURU', algorithms=['HS256'])
         user_id = data.get('user_id')
@@ -190,8 +191,7 @@ def confirm_email(token):
                 flash('Ваш адрес электронной почты был подтвержден!')
             else:
                 flash('Ваш адрес электронной почты уже подтвержден!')
-
-            return redirect(url_for('home', user_id=user.id))
+            return redirect(url_for('confirmed_email'))
         else:
             flash('Пользователь не найден.')
             return redirect(url_for('home'))
@@ -202,6 +202,11 @@ def confirm_email(token):
     except jwt.InvalidTokenError:
         flash('Неверная ссылка.')
         return redirect(url_for('home'))
+
+@app.route('/confirmed_email')
+def confirmed_email():
+    return render_template('email_confirmed.html', user=g.user)
+
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -273,20 +278,23 @@ def change_email():
                     return render_template('change_email.html', user=user, message=message)
 
                 user.email = new_email
-                user.is_confirmed = False 
+                user.is_confirmed = False  
                 db.session.commit()
 
+        
+                session['email'] = new_email
+
+                
                 confirmation_link = generate_confirmation_link(user.id)
                 send_confirmation_email(new_email, confirmation_link)
 
                 flash('Почта была изменена. Пожалуйста, подтвердите новый адрес электронной почты.')
-                return redirect(url_for('profile')) 
+                return redirect(url_for('profile'))
             else:
                 message = 'Почта не найдена.'  
                 return render_template('change_email.html', user=user, message=message)
 
     return render_template('change_email.html', user=g.user, message=message)
-
 
 
 @app.route('/change_username', methods=['GET', 'POST'])
@@ -352,6 +360,47 @@ def us():
 
     return render_template('about_us.html', user=g.user, filter_style=filter_style, brightness=brightness)
 
+@app.route('/forum', methods=['GET', 'POST'])
+def forum():
+    if request.method == 'POST':
+        if g.user.status == 'Забанен':
+            flash('Вы не можете отправлять сообщения, так как вы забанены :(')
+            return redirect(url_for('forum'))
+
+        if 'message' in request.form:
+            message_content = request.form['message']
+            new_message = Message(content=message_content, user_id=g.user.id)
+            db.session.add(new_message)
+            db.session.commit()
+            flash('Сообщение отправлено.')
+        else:
+            flash('Ошибка: Сообщение не может быть пустым.')
+
+        if 'ban_user' in request.form and g.user.status == 'Администратор':
+            username_to_ban = request.form['ban_user']
+            user_to_ban = User.query.filter_by(username=username_to_ban).first()
+            if user_to_ban:
+                user_to_ban.status = 'Забанен'
+                db.session.commit()
+                flash(f'Пользователь {username_to_ban} был забанен.')
+            else:
+                flash('Пользователь не найден.')
+
+        if 'unban_user' in request.form and g.user.status == 'Администратор':
+            username_to_unban = request.form['unban_user']
+            user_to_unban = User.query.filter_by(username=username_to_unban).first()
+            if user_to_unban:
+                user_to_unban.status = 'Участник' 
+                db.session.commit()
+                flash(f'Пользователь {username_to_unban} был разбанен.')
+            else:
+                flash('Пользователь не найден.')
+
+    messages = Message.query.order_by(Message.timestamp.desc()).all() 
+    return render_template('forum.html', messages=messages, user=g.user)
+
+
+
 @app.route('/quiz1', methods=['GET', 'POST'])
 def quiz1():
     return quiz_logic(1)  
@@ -390,8 +439,7 @@ def quiz9():
 
 @app.route('/quiz10', methods=['GET', 'POST'])
 def quiz10():
-    return quiz_logic(10)
-
+ return quiz_logic(10)
 def quiz_logic(quiz_number):
     user = g.user
     questions = {
@@ -484,7 +532,7 @@ def quiz_logic(quiz_number):
                     "A": "Использование ископаемого топлива",
                     "B": "Сохранение лесов",
                     "C": "Переработка пластика",
-                    "D": "Оба B и C"
+                    "D": "Вариант 2 и 3"
                 },
                 "correct_answer": "D"
             },
@@ -501,7 +549,7 @@ def quiz_logic(quiz_number):
         ]
     },
     4: {  
-        "text": "Вода является одним из самых ценных ресурсов на Земле, и её охрана имеет решающее значение для здоровья экосистем. Вода используется для питья, сельского хозяйства и промышленности. Каждый должен заботиться о сохранении воды и использовать её разумно, чтобы избежать водного кризиса.",
+        "text": "Вода",
         "questions": [
             {
                 "question": "Какое из следующих действий помогает сохранять водные ресурсы?",
@@ -536,7 +584,7 @@ def quiz_logic(quiz_number):
         ]
     },
     5: {  
-        "text": "Биологическое разнообразие включает в себя все живые организмы на планете и их взаимодействия. Сохранение биологического разнообразия имеет важное значение для поддержания экосистем и их функций. Угроза исчезновения видов представляет собой серьезную проблему, требующую нашего внимания.",
+        "text": "Биологическое разнообразие",
         "questions": [
             {
                 "question": "Почему биологическое разнообразие важно?",
@@ -571,7 +619,7 @@ def quiz_logic(quiz_number):
         ]
     },
     6: {  
-        "text": "Устойчивый транспорт включает в себя различные способы передвижения, которые минимизируют воздействие на окружающую среду. Это включает в себя использование общественного транспорта, велосипедов и пешие прогулки. Устойчивый транспорт помогает снизить выбросы углекислого газа и уменьшить загрязнение.",
+        "text": "Устойчивый транспорт",
         "questions": [
             {
                 "question": "Какой из следующих видов транспорта считается устойчивым?",
@@ -606,7 +654,7 @@ def quiz_logic(quiz_number):
         ]
     },
     7: {  
-        "text": "Управление отходами и переработка имеют важное значение для сокращения негативного влияния на окружающую среду. Эффективные стратегии управления отходами помогают снизить количество отходов, поступающих на свалки, и уменьшают загрязнение. Переработка помогает сохранить ресурсы и снижает выбросы углерода.",
+        "text": "Отходы и переработка",
         "questions": [
             {
                 "question": "Какое из следующих является примером переработки?",
@@ -641,7 +689,7 @@ def quiz_logic(quiz_number):
         ]
     },
     8: {  
-        "text": "Энергосбережение — это эффективный способ сокращения расхода энергии и уменьшения углеродного следа. Это включает в себя использование энергоэффективных устройств и сокращение потребления электроэнергии. Энергосбережение помогает не только сэкономить деньги, но и защитить окружающую среду.",
+        "text": "Энергосбережение",
         "questions": [
             {
                 "question": "Какое из следующих действий помогает экономить энергию?",
@@ -676,7 +724,7 @@ def quiz_logic(quiz_number):
         ]
     },
     9: {  
-        "text": "Леса являются важными экосистемами, которые поддерживают разнообразие видов и обеспечивают множество экосистемных услуг. Леса помогают очищать воздух, обеспечивают кислород и являются домом для многих животных и растений. Защита лесов имеет решающее значение для сохранения природы.",
+        "text": "Лесные экосистемы",
         "questions": [
             {
                 "question": "Какую роль играют леса в экосистеме?",
@@ -711,7 +759,7 @@ def quiz_logic(quiz_number):
         ]
     },
     10: {  
-        "text": "Глобальное потепление — это явление, связанное с увеличением средней температуры Земли. Оно вызвано выбросами парниковых газов, таких как углекислый газ и метан. Глобальное потепление приводит к серьезным последствиям, включая изменение климата, повышение уровня моря и изменение экосистем.",
+        "text": "Глобальное потепление",
         "questions": [
             {
                 "question": "Что вызывает глобальное потепление?",
@@ -801,7 +849,7 @@ def quiz_logic(quiz_number):
                            user=user,
                            already_completed=already_completed,
                            top_players=top_players)
-
+ 
 
 
 @app.route('/top_list')

@@ -1,0 +1,54 @@
+{% extends "index.html" %}
+
+{% block title %}
+    Форум
+{% endblock %}
+
+{% block content %}
+    <h1>Форум</h1>
+
+    {% if g.user.status != 'Забанен' %}
+        <form method="POST" action="{{ url_for('forum') }}">
+            <label for="message">Написать сообщение:</label>
+            <p></p>
+            <textarea name="message" id="message" class="textarea" required></textarea>
+            <p></p>
+            <button type="submit" class="button">Отправить</button>
+        </form>
+
+        {% if g.user.status == 'Администратор' %}
+            <h2>Забанить пользователя</h2>
+            <form method="POST" action="{{ url_for('forum') }}">
+                <label for="ban_user">Имя пользователя:</label>
+                <input type="text" name="ban_user" id="ban_user" required>
+                <button type="submit" class="button">Забанить</button>
+            </form>
+
+            <h2>Разбанить пользователя</h2>
+            <form method="POST" action="{{ url_for('forum') }}">
+                <label for="unban_user">Имя пользователя:</label>
+                <input type="text" name="unban_user" id="unban_user" required>
+                <button type="submit" class="button">Разбанить</button>
+            </form>
+        {% endif %}
+    {% else %}
+        <p>Вы не можете отправлять сообщения, так как ваш статус - Забанен.</p>
+    {% endif %}
+
+    <div class="messages">
+        <h2>Сообщения</h2>
+        {% for msg in messages %} 
+            <div class="message-card">
+                <div class="user-info">
+                    <img src="{{ url_for('static', filename=msg.user.profile_picture if msg.user.profile_picture else 'profile_pics/default_profile.png') }}" alt="Profile Picture" class="profile-pic">
+                    <strong style="color: {% if msg.user.status == 'Администратор' %}blue{% elif msg.user.status == 'Забанен' %}red{% else %}black{% endif %};">
+                        {{ msg.user.username }} ({{ msg.user.status }}):
+                    </strong>
+                </div>
+                <p>{{ msg.content }}</p>
+                <p><small>{{ msg.timestamp.strftime('%Y-%m-%d %H:%M') }}</small></p>
+            </div>
+        {% endfor %}
+    </div>
+
+{% endblock %}

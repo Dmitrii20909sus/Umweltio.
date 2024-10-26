@@ -15,7 +15,7 @@
     <img class="img_me" src="{{ url_for('static', filename='img/WhatsApp_Bild_2024-10-02_um_17.47.15_d1eef809.jpg') }}" alt="My face" style="filter: brightness({{ brightness }}%); filter: {{ filter_style }};">
 
     <form method="GET">
-        <input type="range" id="brightnessRange" name="brightness" min="0" max="300" value="{{ brightness }}" step="1" onchange="this.form.submit()">
+        <input type="range" id="brightnessRange" name="brightness" min="0" max="500" value="{{ brightness }}" step="1" onchange="this.form.submit()">
         <button type="submit" class="button"name="make_pink" value="true">:]</button>
 
     </form>
